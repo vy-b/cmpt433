@@ -9,6 +9,8 @@
 // static void export_pins(enum joystick pin); // Uncomment definition and all references to export pins
 static void runCommand(char* command);
 static void changeBrightness(int lednum, char* onOff);
+static void flashLEDs(int timesFlashed, int delayOnMs, int delayOffMs);
+static void setTriggers(int lednum, char* triggerMode);
 static long long chooseWaitTime(void);
 static long long getTimeInMs(void);
 static void sleepForMs(long long delayInMs);
@@ -78,12 +80,14 @@ int main(int argc,char* args[])
                     currentBest = elapsedTime;
                 }
                 printf("Your reaction time was %llu; best so far in the game is %llu\n",elapsedTime,currentBest);
+                flashLEDs(2,50,200);
                 resetLEDs();
                 sleepForMs(1000);
                 break;
             }
             else if (isDirectionPressed(notToPress)){
                 printf("Incorrect.\n");
+                flashLEDs(10,10,90);
                 resetLEDs();
                 sleepForMs(1000);
                 break;
@@ -151,7 +155,7 @@ static void runCommand(char* command)
 // }
 
 
-static void setTriggers(int lednum)
+static void setTriggers(int lednum, char* triggerMode)
 {
     char filename[100];
     snprintf(filename,100,"/sys/class/leds/beaglebone:green:usr%d/trigger",lednum);
@@ -160,7 +164,7 @@ static void setTriggers(int lednum)
         printf("ERROR OPENING %s.\n", filename);
         exit(1);
     }
-    int charWritten = fprintf(pLedTriggerFile, "none");
+    int charWritten = fprintf(pLedTriggerFile, triggerMode);
     if (charWritten <= 0) {
         printf("ERROR WRITING DATA");
         exit(1);
@@ -168,7 +172,7 @@ static void setTriggers(int lednum)
     fclose(pLedTriggerFile);
 }
 
-static void changeBrightness(int lednum, char* onOff)\
+static void changeBrightness(int lednum, char* onOff)
 {
     char filename[100];
     snprintf(filename,100,"/sys/class/leds/beaglebone:green:usr%d/brightness",lednum);
@@ -185,6 +189,20 @@ static void changeBrightness(int lednum, char* onOff)\
     fclose(pLedBrightnessFile);
 }
 
+static void flashLEDs(int timesFlashed, int delayOnMs, int delayOffMs )
+{
+    for (int j = 0; j<timesFlashed;j++){
+        for (int i = 0; i < 4; i++){
+        changeBrightness(i,"1");
+        }
+        sleepForMs(delayOnMs);
+        for (int i = 0; i < 4; i++){
+            changeBrightness(i,"0");
+        }
+        sleepForMs(delayOffMs);
+    }
+}
+
 
 static void game_init(void)
 {
@@ -196,7 +214,7 @@ static void game_init(void)
     runCommand("config-pin p8.18 gpio");
 
     for (int i = 0; i<4; i++){
-        setTriggers(i);
+        setTriggers(i,"none");
         changeBrightness(i,"0");
     }
 }
