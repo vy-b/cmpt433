@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include "sampler.h"
+#include "periodTimer.h"
 #define MSG_MAX_LEN 1024
 static int recentIndex = 0;
 static int historyCount = 0;
@@ -43,9 +44,7 @@ void Sampler_setHistorySize(int newSize)
         }
         // array is full, copy from least recent to most recent
         else {
-            printf("recent=%d  ",(recentIndex+1)%arraySize);
             for (int i = 0,j=arraySize+(recentIndex-newSize+2); i<newSize; i++,j++){
-                printf("%d  ",j%arraySize);
                 temp[i] = recent[j%arraySize];
             }
             recentIndex = newSize-1;
@@ -67,6 +66,8 @@ void Sampler_setHistorySize(int newSize)
         recent = temp;
     }
 }
+
+// Gets N most recent items in history to print
 char* Sampler_get_N(int n){
     char* returnMsg = (char*) malloc(MSG_MAX_LEN*sizeof(char));
     char temp[317];
@@ -111,7 +112,6 @@ static void signal_handler(){
 static void* samplerThread()
 {
     int perSecCount = 1;
-    
     int reading = getVoltageReading(A2D_FILE_VOLTAGE1);
     
     arraySize = getVoltageReading(A2D_FILE_VOLTAGE0);
@@ -127,43 +127,46 @@ static void* samplerThread()
     for (int i = 0; i<arraySize; i++){
         recent[i] = 0;
     }
-    double voltage = ((double)reading / A2D_MAX_READING) * A2D_VOLTAGE_REF_V;
-    currentAverage = voltage;
     // first run
     long long currentTime = getTimeInMs();
-    printf("Samples/s = %d  ", perSecCount);
-    printf("history size = %d", historyCount);
-    printf("    Pot Value %5d\n", reading);
-    recent[recentIndex] = voltage;
     perSecCount = 0;
     int dipCount = 0;
     int lastDip = 0;
+    Period_statistics_t* pStats = (Period_statistics_t*) malloc(sizeof(Period_statistics_t));
     while (true) {
         signal(SIGINT,signal_handler);
         reading = getVoltageReading(A2D_FILE_VOLTAGE1);
-        
-        voltage = ((double)reading / A2D_MAX_READING) * A2D_VOLTAGE_REF_V;
+        Period_markEvent(PERIOD_EVENT_SAMPLE_LIGHT);
+        double voltage = ((double)reading / A2D_MAX_READING) * A2D_VOLTAGE_REF_V;
         currentAverage = exponential_smoothing(currentAverage, voltage, 0.001);
         // printf("new avg:%5.3f",currentAverage);
+
+
         // if dip detected
         if (lastDip==0 && voltage <= currentAverage-0.1){
             lastDip = 1;
             voltage = currentAverage;
             dipCount++;
         }
-        else if (lastDip!=0 && voltage > currentAverage-0.1){
+        else if (lastDip!=0 && voltage > currentAverage+0.07){
             lastDip=0;
         }
+
+
         if (getTimeInMs()>=currentTime+1000){
+            
+            
             int newSize = getVoltageReading(A2D_FILE_VOLTAGE0);
             if (newSize!=arraySize){
                 Sampler_setHistorySize(newSize);
             }
             printf("Samples/s = %d  ", perSecCount);
+            printf("Pot Value %d  ", arraySize);
             printf("history size = %d    ", historyCount);
-            printf("Value %5d ==> %5.3fV  ", reading, voltage);
             printf("avg:%5.3f ",currentAverage);
-            printf("dips: %d\n",dipCount);
+            printf("dips: %d  ",dipCount);
+            Period_getStatisticsAndClear(PERIOD_EVENT_SAMPLE_LIGHT,pStats);
+            printf("Sampling[  %5.3f,  %5.3f] avg %5.3f/%d\n",pStats->minPeriodInMs,pStats->maxPeriodInMs,pStats->avgPeriodInMs,pStats->numSamples);
             perSecCount = 0;
             /* if array is not full, just print from start til last valid value */
             if (recent[(recentIndex+1)%arraySize]==0){

@@ -94,7 +94,9 @@ int main()
         }
         else if (strncmp("get",messageRx, strlen("get"))==0){
             /*parse string to get N*/
-            strcpy(messageTx,Sampler_get_N(8));
+            char* N_list = Sampler_get_N(8);
+            strcpy(messageTx,N_list);
+            free(N_list);
         }
         else if (strncmp("length",messageRx, strlen("length"))==0){
             sprintf(messageTx, "History can hold %d samples.\nCurrently holding %d samples.\n",Sampler_getHistorySize(), Sampler_getNumSamplesInHistory());
