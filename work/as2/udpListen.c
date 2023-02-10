@@ -119,6 +119,7 @@ void* handleRequest(char* messageRx, char* messageTx, struct sockaddr_in sinRemo
 		if (valid){
 			double* N_list = Sampler_get_N(n);
 			sendNumList(N_list,n,messageTx,sinRemote, socketDescriptor);
+			free(N_list);
 			return NULL;
 		}
 		else{
@@ -129,6 +130,7 @@ void* handleRequest(char* messageRx, char* messageTx, struct sockaddr_in sinRemo
 		int length = 0;
 		double* N_list = Sampler_getHistory(&length);
 		sendNumList(N_list,length,messageTx,sinRemote, socketDescriptor);
+		free(N_list);
 		return NULL;
 	}
 	else if (strncmp("length",messageRx, strlen("length"))==0){
