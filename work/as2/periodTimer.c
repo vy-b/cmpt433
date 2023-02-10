@@ -8,8 +8,6 @@
 
 // Written by Brian Fraser
 
-
-
 // Data collected
 typedef struct {
     // Store the timestamp samples each time we mark an event.

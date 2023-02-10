@@ -20,10 +20,11 @@ int Sampler_getHistorySize(void);
 // The calling code must call free() on the returned pointer.
 // Note: provides both data and size to ensure consistency.
 double* Sampler_getHistory(int *length);
-char* Sampler_get_N(int n);
+double* Sampler_get_N(int n);
 // Returns how many valid samples are currently in the history.
 // May be less than the history size if the history is not yet full.
 int Sampler_getNumSamplesInHistory();
+int Sampler_getNumDips(void);
 // Get the average light level (not tied to the history).
 double Sampler_getAverageReading(void);
 // Get the total number of light level samples taken so far.

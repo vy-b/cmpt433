@@ -5,20 +5,26 @@
 #include <pthread.h>
 #include <signal.h>
 #include "sampler.h"
+#include "led_display.h"
 #include "periodTimer.h"
 #define MSG_MAX_LEN 1024
 static int recentIndex = 0;
 static int historyCount = 0;
+static int dipCount = 0;
 static long long allTimeCount = 1;
 static double currentAverage = 0;
 static int arraySize = 1;
+
 static pthread_t threadSampling;
 static double* recent;
+
+static pthread_mutex_t historyMutex = PTHREAD_MUTEX_INITIALIZER;
 static void sleepForMs(long long delayInMs);
 static long long getTimeInMs(void);
 static int getVoltageReading(char* file);
 static double exponential_smoothing(double currentAverage, double nth_sample, double a);
 static void* samplerThread();
+
 // Begin/end the background thread which samples light levels.
 void Sampler_startSampling(void)
 {
@@ -42,7 +48,7 @@ void Sampler_setHistorySize(int newSize)
                 temp[i] = recent[i];
             }
         }
-        // array is full, copy from least recent to most recent
+        // array is full, copy from least recent in range to most recent
         else {
             for (int i = 0,j=arraySize+(recentIndex-newSize+2); i<newSize; i++,j++){
                 temp[i] = recent[j%arraySize];
@@ -68,18 +74,20 @@ void Sampler_setHistorySize(int newSize)
 }
 
 // Gets N most recent items in history to print
-char* Sampler_get_N(int n){
-    char* returnMsg = (char*) malloc(MSG_MAX_LEN*sizeof(char));
-    char temp[317];
+double* Sampler_get_N(int n){
+    // to fix
     if (n>historyCount){
-        sprintf(returnMsg, "%d", historyCount);
-        return returnMsg;
+        return (double*)(&historyCount);
     }
-    for (int i = 0,j=arraySize+(recentIndex-n+2); i<n; i++,j++){
-        sprintf(temp,"%f  ",recent[j%arraySize]);
-        strcat(returnMsg,temp);
+
+    double* N_list = (double*) malloc(n*sizeof(double));
+    memset(N_list,0,n*sizeof(double));
+    pthread_mutex_lock(&historyMutex);
+    for (int i = 0,j=arraySize+(recentIndex-n+1); i<n; i++,j++){
+        N_list[i] = recent[j%arraySize];
     }
-    return returnMsg;
+    pthread_mutex_unlock(&historyMutex);
+    return N_list;
 }
 int Sampler_getHistorySize(void){
     return arraySize;
@@ -90,6 +98,7 @@ int Sampler_getHistorySize(void){
 // The calling code must call free() on the returned pointer.
 // Note: provides both data and size to ensure consistency.
 double* Sampler_getHistory(int *length){
+    *length = historyCount;
     return recent;
 }
 // Returns how many valid samples are currently in the history.
@@ -105,6 +114,9 @@ double Sampler_getAverageReading(void){
 long long Sampler_getNumSamplesTaken(void){
     return allTimeCount;
 }
+int Sampler_getNumDips(void){
+    return dipCount;
+}
 static void signal_handler(){
     free(recent);
     pthread_cancel(threadSampling);
@@ -119,7 +131,6 @@ static void* samplerThread()
         arraySize = 1;
     }
     recent = (double*) malloc(arraySize*sizeof(double));
-
     if (recent == NULL) {
         printf("Memory allocation failed.\n");
         exit(1);
@@ -130,8 +141,12 @@ static void* samplerThread()
     // first run
     long long currentTime = getTimeInMs();
     perSecCount = 0;
-    int dipCount = 0;
-    int lastDip = 0;
+    int lastDip = 0; // flag for encountering a dip
+    int recentDips = 0;
+    int secondsWithDips = 0;
+    // keep track of dip counts per second for a maximum of 8 seconds - max history size = 4000 and average sample size = 500-550
+    // int dipsPerSecond[8];
+    // int groupIndex; // index of current sample group
     Period_statistics_t* pStats = (Period_statistics_t*) malloc(sizeof(Period_statistics_t));
     while (true) {
         signal(SIGINT,signal_handler);
@@ -140,22 +155,40 @@ static void* samplerThread()
         double voltage = ((double)reading / A2D_MAX_READING) * A2D_VOLTAGE_REF_V;
         currentAverage = exponential_smoothing(currentAverage, voltage, 0.001);
         // printf("new avg:%5.3f",currentAverage);
-
-
+        recentIndex = (recentIndex+1)%arraySize;
         // if dip detected
         if (lastDip==0 && voltage <= currentAverage-0.1){
             lastDip = 1;
             voltage = currentAverage;
             dipCount++;
+            
         }
         else if (lastDip!=0 && voltage > currentAverage+0.07){
             lastDip=0;
         }
-
+        
+        recent[recentIndex] = voltage;
+        allTimeCount++;
+        perSecCount++;
+        if (historyCount < arraySize){
+            historyCount++;
+        }
+        else {
+            historyCount = arraySize-1;
+        }
 
         if (getTimeInMs()>=currentTime+1000){
-            
-            
+            if (recentDips == dipCount && dipCount!=0){
+                if(secondsWithDips > 0){
+                    int dipsPerSec = dipCount/secondsWithDips;
+                    dipCount-=dipsPerSec;
+                    secondsWithDips--;
+                }
+            }
+            else{
+                secondsWithDips++;
+            }
+            recentDips = dipCount;
             int newSize = getVoltageReading(A2D_FILE_VOLTAGE0);
             if (newSize!=arraySize){
                 Sampler_setHistorySize(newSize);
@@ -173,11 +206,12 @@ static void* samplerThread()
                 for (int i = 0; i<recentIndex+1; i+=200){
                     printf("%5.3f    ",recent[i]);
                 }
+                
             }
-            // array is full, print from the least recent backwards to most recent (wrap around)
+            // array is full, print from the least recent to most recent (wrap around)
             else {
                 int index = 0;
-                for (index=recentIndex+1;index<arraySize; index+=200){
+                for (index=recentIndex+2;index<arraySize; index+=200){
                     printf("%5.3f    ",recent[index]);
                 }
                 for (index=(arraySize+index)%arraySize;index<=recentIndex; index+=200){
@@ -189,16 +223,6 @@ static void* samplerThread()
 
         }
         
-        recentIndex = (recentIndex+1)%arraySize;
-        recent[recentIndex] = voltage;
-        allTimeCount++;
-        perSecCount++;
-        if (historyCount <= arraySize){
-            historyCount++;
-        }
-        else {
-            historyCount = arraySize;
-        }
         sleepForMs(1);
     }
     return NULL;
