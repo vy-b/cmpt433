@@ -193,7 +193,7 @@ static void flashLEDs(int timesFlashed, int delayOnMs, int delayOffMs )
 {
     for (int j = 0; j<timesFlashed;j++){
         for (int i = 0; i < 4; i++){
-        changeBrightness(i,"1");
+            changeBrightness(i,"1");
         }
         sleepForMs(delayOnMs);
         for (int i = 0; i < 4; i++){

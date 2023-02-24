@@ -4,7 +4,7 @@
 # Edit this file to compile extra C files into their own programs.
 TARGET= wave_player
 
-SOURCES= waveplayer.c
+SOURCES= waveplayer.c audiomixer.c
 
 
 PUBDIR = $(HOME)/cmpt433/public/myApps

@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <limits.h>
+#include "audiomixer.h"
 // File used for play-back:
 // If cross-compiling, must have this file available, via this relative path,
 // on the target when the application is run. This example's Makefile copies the wave-files/
@@ -23,72 +24,51 @@
 int running = 1;
 // Store data of a single wave file read into memory.
 // Space is dynamically allocated; must be freed correctly!
-typedef struct {
-	int numSamples;
-	short *pData;
-} wavedata_t;
 
 // Prototypes:
 snd_pcm_t *Audio_openDevice();
-void Audio_readWaveFileIntoMemory(char *fileName, wavedata_t *pWaveStruct);
 void Audio_playFile(snd_pcm_t *handle, wavedata_t *pWaveData);
 
 
-static void signal_handler()
-{
-    running = 0;
-}
-static short clipNum(short* num)
-{
-	printf("%hi\n",*num);
-	if (*num > SHRT_MAX) return SHRT_MAX;
-	else if (*num < SHRT_MIN) return SHRT_MIN;
-	else return *num;
-}
 int main(void)
 {
-	printf("Beginning play-back of %s\n", BASE_DRUM);
-
-	// Configure Output Device
-	snd_pcm_t *handle = Audio_openDevice();
+	// printf("Beginning play-back of %s\n", BASE_DRUM);
+	AudioMixer_init();
 
 	// Load wave file we want to play:
 	wavedata_t baseDrumFile;
 	
-	Audio_readWaveFileIntoMemory(BASE_DRUM, &baseDrumFile);
+	AudioMixer_readWaveFileIntoMemory(BASE_DRUM, &baseDrumFile);
     wavedata_t hiHatFile;
-	Audio_readWaveFileIntoMemory(HI_HAT,&hiHatFile);
+	AudioMixer_readWaveFileIntoMemory(HI_HAT,&hiHatFile);
 
 	wavedata_t snareFile;
-	Audio_readWaveFileIntoMemory(SNARE, &snareFile);
+	AudioMixer_readWaveFileIntoMemory(SNARE, &snareFile);
 
-	wavedata_t hihat_base;
-	int sizeInBytes = (baseDrumFile.numSamples + hiHatFile.numSamples) * SAMPLE_SIZE;
-	hihat_base.pData = malloc(sizeInBytes);
-	short data = clipNum(baseDrumFile.pData) + clipNum(hiHatFile.pData);
-	// printf("%hi",hiHatFile.pData);
-	printf("%hi",data);
-	hihat_base.pData = &data;
-	hihat_base.numSamples = baseDrumFile.numSamples + hiHatFile.numSamples;
-	while(running) {
-		signal(SIGINT, signal_handler);
-		Audio_playFile(handle, &hiHatFile);
-		sleep(1);
-		// Audio_playFile(handle,)
-	}
+	AudioMixer_queueSound(&baseDrumFile);
+	AudioMixer_queueSound(&hiHatFile);
+	// wavedata_t hihat_base;
+	// int sizeInBytes = (baseDrumFile.numSamples + hiHatFile.numSamples) * SAMPLE_SIZE;
+	// hihat_base.pData = malloc(sizeInBytes);
+	// short data = clipNum(baseDrumFile.pData) + clipNum(hiHatFile.pData);
+	// // printf("%hi",hiHatFile.pData);
+	// printf("%hi",data);
+	// hihat_base.pData = &data;
+	// hihat_base.numSamples = baseDrumFile.numSamples + hiHatFile.numSamples;
+	
 	// Play Audio
 	
 	//	Audio_playFile(handle, &sampleFile);
 	//	Audio_playFile(handle, &sampleFile);
 
 	// Cleanup, letting the music in buffer play out (drain), then close and free.
-	snd_pcm_drain(handle);
-	snd_pcm_hw_free(handle);
-	snd_pcm_close(handle);
-	free(baseDrumFile.pData);
-	free(hiHatFile.pData);
-	free(snareFile.pData);
-	free(hihat_base.pData);
+	// snd_pcm_drain(handle);
+	// snd_pcm_hw_free(handle);
+	// snd_pcm_close(handle);
+	// free(baseDrumFile.pData);
+	// free(hiHatFile.pData);
+	// free(snareFile.pData);
+	// free(hihat_base.pData);
 
 	printf("Done!\n");
 	return 0;
@@ -96,45 +76,45 @@ int main(void)
 
 // Read in the file to dynamically allocated memory.
 // !! Client code must free memory in wavedata_t !!
-void Audio_readWaveFileIntoMemory(char *fileName, wavedata_t *pWaveStruct)
-{
-	assert(pWaveStruct);
+// void Audio_readWaveFileIntoMemory(char *fileName, wavedata_t *pWaveStruct)
+// {
+// 	assert(pWaveStruct);
 
-	// Wave file has 44 bytes of header data. This code assumes file
-	// is correct format.
-	const int DATA_OFFSET_INTO_WAVE = 44;
+// 	// Wave file has 44 bytes of header data. This code assumes file
+// 	// is correct format.
+// 	const int DATA_OFFSET_INTO_WAVE = 44;
 
-	// Open file
-	FILE *file = fopen(fileName, "r");
-	if (file == NULL) {
-		fprintf(stderr, "ERROR: Unable to open file %s.\n", fileName);
-		exit(EXIT_FAILURE);
-	}
+// 	// Open file
+// 	FILE *file = fopen(fileName, "r");
+// 	if (file == NULL) {
+// 		fprintf(stderr, "ERROR: Unable to open file %s.\n", fileName);
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	// Get file size
-	fseek(file, 0, SEEK_END);
-	int sizeInBytes = ftell(file) - DATA_OFFSET_INTO_WAVE;
-	fseek(file, DATA_OFFSET_INTO_WAVE, SEEK_SET);
-	pWaveStruct->numSamples = sizeInBytes / SAMPLE_SIZE;
+// 	// Get file size
+// 	fseek(file, 0, SEEK_END);
+// 	int sizeInBytes = ftell(file) - DATA_OFFSET_INTO_WAVE;
+// 	fseek(file, DATA_OFFSET_INTO_WAVE, SEEK_SET);
+// 	pWaveStruct->numSamples = sizeInBytes / SAMPLE_SIZE;
 
-	// Allocate Space
-	pWaveStruct->pData = malloc(sizeInBytes);
-	if (pWaveStruct->pData == NULL) {
-		fprintf(stderr, "ERROR: Unable to allocate %d bytes for file %s.\n",
-				sizeInBytes, fileName);
-		exit(EXIT_FAILURE);
-	}
+// 	// Allocate Space
+// 	pWaveStruct->pData = malloc(sizeInBytes);
+// 	if (pWaveStruct->pData == NULL) {
+// 		fprintf(stderr, "ERROR: Unable to allocate %d bytes for file %s.\n",
+// 				sizeInBytes, fileName);
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	// Read data:
-	int samplesRead = fread(pWaveStruct->pData, SAMPLE_SIZE, pWaveStruct->numSamples, file);
-	if (samplesRead != pWaveStruct->numSamples) {
-		fprintf(stderr, "ERROR: Unable to read %d samples from file %s (read %d).\n",
-				pWaveStruct->numSamples, fileName, samplesRead);
-		exit(EXIT_FAILURE);
-	}
+// 	// Read data:
+// 	int samplesRead = fread(pWaveStruct->pData, SAMPLE_SIZE, pWaveStruct->numSamples, file);
+// 	if (samplesRead != pWaveStruct->numSamples) {
+// 		fprintf(stderr, "ERROR: Unable to read %d samples from file %s (read %d).\n",
+// 				pWaveStruct->numSamples, fileName, samplesRead);
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	fclose(file);
-}
+// 	fclose(file);
+// }
 
 // Open the PCM audio output device and configure it.
 // Returns a handle to the PCM device; needed for other actions.
