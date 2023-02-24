@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <limits.h>
 #include <alloca.h> // needed for mixer
-
+#include <signal.h>
 
 static snd_pcm_t *handle;
 #define DEFAULT_VOLUME 80
@@ -20,7 +20,6 @@ static snd_pcm_t *handle;
 
 static unsigned long playbackBufferSize = 0;
 static short *playbackBuffer = NULL;
-static pthread_mutex_t bufferMutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Currently active (waiting to be played) sound bites
 #define MAX_SOUND_BITES 30
@@ -43,7 +42,10 @@ static pthread_t playbackThreadId;
 static pthread_mutex_t audioMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int volume = 0;
-
+// static void signal_handler()
+// {
+//     stopping = true;
+// }
 void AudioMixer_init(void)
 {
 	AudioMixer_setVolume(DEFAULT_VOLUME);
@@ -249,16 +251,16 @@ static short clipNum(short* num)
 static void fillPlaybackBuffer(short *buff, int size)
 {
     memset(playbackBuffer,0,playbackBufferSize);
-    pthread_mutex_lock(&bufferMutex);
+    pthread_mutex_lock(&audioMutex);
     {
         int i = 0;
         while (i < MAX_SOUND_BITES){
             if (soundBites[i].pSound != NULL){
-				playbackBuffer += clip(soundBites[i].pSound->pData);
+				playbackBuffer += clipNum(soundBites[i].pSound->pData);
 			}
         }
     }
-	pthread_mutex_unlock(&bufferMutex);
+	pthread_mutex_unlock(&audioMutex);
 	/*
 	 * REVISIT: Implement this
 	 * 1. Wipe the playbackBuffer to all 0's to clear any previous PCM data.
@@ -308,6 +310,8 @@ void* playbackThread(void* arg)
 {
 
 	while (!stopping) {
+
+		// signal(SIGINT, signal_handler);
 		// Generate next block of audio
 		fillPlaybackBuffer(playbackBuffer, playbackBufferSize);
 
