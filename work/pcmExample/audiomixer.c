@@ -10,8 +10,9 @@
 #include <signal.h>
 
 static snd_pcm_t *handle;
-#define DEFAULT_VOLUME 80
-
+#define DEFAULT_VOLUME 100
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define SAMPLE_RATE 44100
 #define NUM_CHANNELS 1
 #define SAMPLE_SIZE (sizeof(short)) 			// bytes per sample
@@ -260,8 +261,8 @@ void AudioMixer_setVolume(int newVolume)
 }
 static short clipNum(short num)
 {
-	if (num > SHRT_MAX) return SHRT_MAX;
-	else if (num < SHRT_MIN) return SHRT_MIN;
+	if (num > SHRT_MAX) return SHRT_MAX-1;
+	else if (num < SHRT_MIN) return SHRT_MIN+1;
 	else return num;
 }
 
@@ -273,15 +274,38 @@ static void fillPlaybackBuffer(short *buff, int size)
     memset(buff,0,size*sizeof(short));
 	int i = 0;
 	int curr_size = 0;
+	int prevSoundBiteSamples = 0;
+	int flag_1 = 0;
+	int totalSoundBitesInQueue = 0;
 	while (i < MAX_SOUND_BITES && curr_size < size){
 		if (soundBites[i].pSound!=NULL){
 			if (soundBites[i].pSound->pData != 0){
+				totalSoundBitesInQueue++;
+				if (flag_1==0) {
+					flag_1=1;
+					prevSoundBiteSamples = soundBites[i].pSound->numSamples;
+				}
+				else {
+					printf("prev:%d,curr:%d\n",prevSoundBiteSamples,soundBites[i].pSound->numSamples);
+				}
 				// add pcm
 				int offset = soundBites[i].location;
 				int j = offset;
 				int k = 0;
-				for (j = offset, k = 0; j < soundBites[i].pSound->numSamples && k<size; j++,k++){
-					buff[k]+=clipNum(soundBites[i].pSound->pData[j]);
+				int limit = soundBites[i].pSound->numSamples;
+				if (prevSoundBiteSamples!=0){
+					limit = MIN(prevSoundBiteSamples,soundBites[i].pSound->numSamples);
+				}
+				printf("limit:%d\n",limit);
+				for (j = offset, k = 0; j < limit && k<size; j++,k++){
+					// if (buff[k]+clipNum(soundBites[i].pSound->pData[j])>SHRT_MAX){
+					// 	printf("overflow!\n");
+					// }
+					short shrt_data=clipNum(buff[k]+clipNum(soundBites[i].pSound->pData[j]));
+					buff[k] = shrt_data;
+					if (buff[k]>SHRT_MAX){
+						printf("still overflowing\n");
+					}
 					offset++;
 				}
 				if (offset>=soundBites[i].pSound->numSamples){
@@ -290,6 +314,7 @@ static void fillPlaybackBuffer(short *buff, int size)
 					soundBites[i].pSound = NULL;
 					soundBites[i].location = 0;
 					numSoundBites--;
+					printf("remaining:%d\n",numSoundBites);
 				}
 				else {
 					soundBites[i].location = offset;
@@ -299,6 +324,7 @@ static void fillPlaybackBuffer(short *buff, int size)
 		}
 		i++;
 	}
+	// printf("soundbites in queue %d\n",totalSoundBitesInQueue);
 	/*
 	 * REVISIT: Implement this
 	 * 1. Wipe the playbackBuffer to all 0's to clear any previous PCM data.
@@ -354,9 +380,9 @@ void* playbackThread(void* arg)
     pthread_mutex_lock(&audioMutex);
 	{
 		// Generate next block of audio
-		if (numSoundBites>0){
+		// if (numSoundBites>0){
 			fillPlaybackBuffer(playbackBuffer, playbackBufferSize);
-		}
+		// }
 
 		// for (int i = 0; i < playbackBufferSize; i++){
 		// 	printf("%hi\n",playbackBuffer[i]);

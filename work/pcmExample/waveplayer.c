@@ -14,8 +14,8 @@
 // If cross-compiling, must have this file available, via this relative path,
 // on the target when the application is run. This example's Makefile copies the wave-files/
 // folder along with the executable to ensure both are present.
-#define BASE_DRUM "wave-files/100051__menegass__gui-drum-bd-hard.wav"
-#define HI_HAT "wave-files/100053__menegass__gui-drum-cc.wav"
+#define BASE_DRUM "wave-files/100052__menegass__gui-drum-bd-soft.wav"
+#define HI_HAT "wave-files/100057__menegass__gui-drum-cyn-soft.wav"
 #define SNARE "wave-files/100059__menegass__gui-drum-snare-soft.wav"
 
 #define SAMPLE_RATE   44100
@@ -47,11 +47,9 @@ int main(void)
 	joystick_startThread();
 	// Load wave file we want to play:
 	wavedata_t baseDrumFile;
-	
 	AudioMixer_readWaveFileIntoMemory(BASE_DRUM, &baseDrumFile);
     wavedata_t hiHatFile;
 	AudioMixer_readWaveFileIntoMemory(HI_HAT,&hiHatFile);
-
 	wavedata_t snareFile;
 	AudioMixer_readWaveFileIntoMemory(SNARE, &snareFile);
 	
@@ -62,32 +60,35 @@ int main(void)
 		printf("%.5f\n",timeForHalfBeatMs);
 		pthread_mutex_lock(&audioMutex);
 		{
+			printf("basedrum and hihat\n");
 			AudioMixer_queueSound(&hiHatFile);
-			// AudioMixer_queueSound(&snareFile);
-		}
-		pthread_mutex_unlock(&audioMutex);
-		sleepForMs(timeForHalfBeatMs);
-		pthread_mutex_lock(&audioMutex);
-		{
 			AudioMixer_queueSound(&baseDrumFile);
-			// AudioMixer_queueSound(&snareFile);
 		}
 		pthread_mutex_unlock(&audioMutex);
 		sleepForMs(timeForHalfBeatMs);
 		pthread_mutex_lock(&audioMutex);
 		{
+			printf("hihat and snare\n");
 			AudioMixer_queueSound(&hiHatFile);
-			// AudioMixer_queueSound(&snareFile);
+			AudioMixer_queueSound(&snareFile);
 		}
 		pthread_mutex_unlock(&audioMutex);
 		sleepForMs(timeForHalfBeatMs);
 		pthread_mutex_lock(&audioMutex);
 		{
+			printf("snare\n");
+			// AudioMixer_queueSound(&hiHatFile);
 			AudioMixer_queueSound(&snareFile);
-			// AudioMixer_queueSound(&snareFile);
 		}
 		pthread_mutex_unlock(&audioMutex);
 		sleepForMs(timeForHalfBeatMs);
+		// pthread_mutex_lock(&audioMutex);
+		// {
+		// 	// AudioMixer_queueSound(&snareFile);
+		// 	// AudioMixer_queueSound(&snareFile);
+		// }
+		// pthread_mutex_unlock(&audioMutex);
+		// sleepForMs(timeForHalfBeatMs);
 	}
 	
 	// wavedata_t hihat_base;
