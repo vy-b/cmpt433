@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <limits.h>
 #include "audiomixer.h"
+#include "joystickInput.h"
 // File used for play-back:
 // If cross-compiling, must have this file available, via this relative path,
 // on the target when the application is run. This example's Makefile copies the wave-files/
@@ -28,13 +29,22 @@ int running = 1;
 // Prototypes:
 snd_pcm_t *Audio_openDevice();
 void Audio_playFile(snd_pcm_t *handle, wavedata_t *pWaveData);
-
+static void sleepForMs(long long delayInMs)
+{
+    const long long NS_PER_MS = 1000 * 1000;
+    const long long NS_PER_SECOND = 1000000000;
+    long long delayNs = delayInMs * NS_PER_MS;
+    int seconds = delayNs / NS_PER_SECOND;
+    int nanoseconds = delayNs % NS_PER_SECOND;
+    struct timespec reqDelay = {seconds, nanoseconds};
+    nanosleep(&reqDelay, (struct timespec *)NULL);
+}
 
 int main(void)
 {
 	// printf("Beginning play-back of %s\n", BASE_DRUM);
 	AudioMixer_init();
-
+	joystick_startThread();
 	// Load wave file we want to play:
 	wavedata_t baseDrumFile;
 	
@@ -44,9 +54,42 @@ int main(void)
 
 	wavedata_t snareFile;
 	AudioMixer_readWaveFileIntoMemory(SNARE, &snareFile);
-
-	AudioMixer_queueSound(&baseDrumFile);
-	AudioMixer_queueSound(&hiHatFile);
+	
+	while (true){
+		int tempo = AudioMixer_getTempo();
+		printf("%d\n",tempo);
+		float timeForHalfBeatMs = (60 / (float)tempo / 2)*1000;
+		printf("%.5f\n",timeForHalfBeatMs);
+		pthread_mutex_lock(&audioMutex);
+		{
+			AudioMixer_queueSound(&hiHatFile);
+			// AudioMixer_queueSound(&snareFile);
+		}
+		pthread_mutex_unlock(&audioMutex);
+		sleepForMs(timeForHalfBeatMs);
+		pthread_mutex_lock(&audioMutex);
+		{
+			AudioMixer_queueSound(&baseDrumFile);
+			// AudioMixer_queueSound(&snareFile);
+		}
+		pthread_mutex_unlock(&audioMutex);
+		sleepForMs(timeForHalfBeatMs);
+		pthread_mutex_lock(&audioMutex);
+		{
+			AudioMixer_queueSound(&hiHatFile);
+			// AudioMixer_queueSound(&snareFile);
+		}
+		pthread_mutex_unlock(&audioMutex);
+		sleepForMs(timeForHalfBeatMs);
+		pthread_mutex_lock(&audioMutex);
+		{
+			AudioMixer_queueSound(&snareFile);
+			// AudioMixer_queueSound(&snareFile);
+		}
+		pthread_mutex_unlock(&audioMutex);
+		sleepForMs(timeForHalfBeatMs);
+	}
+	
 	// wavedata_t hihat_base;
 	// int sizeInBytes = (baseDrumFile.numSamples + hiHatFile.numSamples) * SAMPLE_SIZE;
 	// hihat_base.pData = malloc(sizeInBytes);
@@ -69,7 +112,8 @@ int main(void)
 	// free(hiHatFile.pData);
 	// free(snareFile.pData);
 	// free(hihat_base.pData);
-
+	AudioMixer_join();
+	joystick_stopThread();
 	printf("Done!\n");
 	return 0;
 }
