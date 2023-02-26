@@ -222,6 +222,11 @@ int AudioMixer_getMode()
 {
 	return currentMode;
 }
+int AudioMixer_setMode(enum beatMode newMode)
+{
+	currentMode = newMode;
+	return currentMode;
+}
 int AudioMixer_cycleNextMode()
 {
 	if (currentMode == 3){

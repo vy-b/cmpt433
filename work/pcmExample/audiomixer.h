@@ -10,6 +10,7 @@ typedef struct {
 } wavedata_t;
 
 #define AUDIOMIXER_MAX_VOLUME 100
+enum beatMode {NONE=1,ROCK=2,CUSTOM=3};
 extern pthread_mutex_t audioMutex;
 extern int numSoundBites;
 // init() must be called before any other functions,
@@ -34,9 +35,10 @@ int  AudioMixer_getVolume(void);
 void AudioMixer_setVolume(int newVolume);
 
 int AudioMixer_getTempo();
-int AudioMixer_setTempo(int newTempo);
+int AudioMixer_setTempo(int tempo);
 
 int AudioMixer_getMode();
+int AudioMixer_setMode(enum beatMode newMode);
 int AudioMixer_cycleNextMode();
 
 #endif

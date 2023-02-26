@@ -4,10 +4,10 @@
 # Edit this file to compile extra C files into their own programs.
 TARGET= wave_player
 
-SOURCES= waveplayer.c audiomixer.c joystickInput.c
+SOURCES= waveplayer.c audiomixer.c joystickInput.c udpListener.c
 
 
-PUBDIR = $(HOME)/cmpt433/public/myApps
+PUBDIR = $(HOME)/cmpt433/public/myApps/wave
 OUTDIR = $(PUBDIR)
 CROSS_TOOL = arm-linux-gnueabihf-
 CC_CPP = $(CROSS_TOOL)g++

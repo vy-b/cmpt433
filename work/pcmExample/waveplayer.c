@@ -10,10 +10,9 @@
 #include <limits.h>
 #include "audiomixer.h"
 #include "joystickInput.h"
+#include "udpListener.h"
+
 // File used for play-back:
-// If cross-compiling, must have this file available, via this relative path,
-// on the target when the application is run. This example's Makefile copies the wave-files/
-// folder along with the executable to ensure both are present.
 #define BASE_DRUM "wave-files/100051__menegass__gui-drum-bd-hard.wav"
 #define HI_HAT "wave-files/100053__menegass__gui-drum-cc.wav"
 #define SNARE "wave-files/100059__menegass__gui-drum-snare-soft.wav"
@@ -23,8 +22,6 @@
 #define SAMPLE_SIZE   (sizeof(short)) 	// bytes per sample
 
 int running = 1;
-// Store data of a single wave file read into memory.
-// Space is dynamically allocated; must be freed correctly!
 
 // Prototypes:
 void rockBeat();
@@ -50,6 +47,7 @@ int main(void)
 	// printf("Beginning play-back of %s\n", BASE_DRUM);
 	AudioMixer_init();
 	joystick_startThread();
+	start_udpThread();
 	// Load wave file we want to play:
 	AudioMixer_readWaveFileIntoMemory(BASE_DRUM, &baseDrumFile);
     
@@ -66,14 +64,15 @@ int main(void)
 	
 	AudioMixer_join();
 	joystick_stopThread();
+	stop_udpThread();
 	printf("Done!\n");
 	return 0;
 }
 void playBeat(int currentMode){
-	if (currentMode == 1){
+	if (currentMode == ROCK){
 		rockBeat();
 	}
-	else if (currentMode == 2){
+	else if (currentMode == NONE){
 
 	}
 	else {
