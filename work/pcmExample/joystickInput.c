@@ -31,7 +31,7 @@ void* joystickThread()
     while (running)
     {
         if (isDirectionPressed(CENTER)){
-            // cycle to next mode
+           AudioMixer_cycleNextMode();
         }
         else if(isDirectionPressed(RIGHT)){
             AudioMixer_setTempo(AudioMixer_getTempo()+5);
@@ -45,7 +45,7 @@ void* joystickThread()
         else if(isDirectionPressed(DOWN)){
             AudioMixer_setVolume(AudioMixer_getVolume()-5);
         }
-        sleepForMs(300);
+        sleepForMs(150);
     }
     return NULL;
 }

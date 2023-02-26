@@ -36,4 +36,7 @@ void AudioMixer_setVolume(int newVolume);
 int AudioMixer_getTempo();
 int AudioMixer_setTempo(int newTempo);
 
+int AudioMixer_getMode();
+int AudioMixer_cycleNextMode();
+
 #endif

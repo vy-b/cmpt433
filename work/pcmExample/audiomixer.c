@@ -41,9 +41,9 @@ void* playbackThread(void* arg);
 static bool stopping = false;
 static pthread_t playbackThreadId;
 pthread_mutex_t audioMutex = PTHREAD_MUTEX_INITIALIZER;
-
+static int currentMode = 1;
 static int volume = 0;
-static int tempo = 30;
+static int tempo = 70;
 // static void signal_handler()
 // {
 //     stopping = true;
@@ -218,7 +218,22 @@ int AudioMixer_setTempo(int newTempo)
 	printf("Tempo changed: %d\n",newTempo);
 	return tempo;
 }
+int AudioMixer_getMode()
+{
+	return currentMode;
+}
+int AudioMixer_cycleNextMode()
+{
+	if (currentMode == 3){
+		currentMode = 1;
+	}
+	else{
+		currentMode++;
+	}
+	printf("mode changed:%d\n",currentMode);
 
+	return currentMode;
+}
 int AudioMixer_getVolume()
 {
 	// Return the cached volume; good enough unless someone is changing
@@ -259,11 +274,11 @@ void AudioMixer_setVolume(int newVolume)
 
     snd_mixer_close(volHandle);
 }
-static short clipNum(short num)
+static short clipNum(int num)
 {
 	if (num > SHRT_MAX) return SHRT_MAX-1;
 	else if (num < SHRT_MIN) return SHRT_MIN+1;
-	else return num;
+	else return (short)num;
 }
 
 // Fill the `buff` array with new PCM values to output.
@@ -274,38 +289,17 @@ static void fillPlaybackBuffer(short *buff, int size)
     memset(buff,0,size*sizeof(short));
 	int i = 0;
 	int curr_size = 0;
-	int prevSoundBiteSamples = 0;
-	int flag_1 = 0;
-	int totalSoundBitesInQueue = 0;
 	while (i < MAX_SOUND_BITES && curr_size < size){
 		if (soundBites[i].pSound!=NULL){
 			if (soundBites[i].pSound->pData != 0){
-				totalSoundBitesInQueue++;
-				if (flag_1==0) {
-					flag_1=1;
-					prevSoundBiteSamples = soundBites[i].pSound->numSamples;
-				}
-				else {
-					printf("prev:%d,curr:%d\n",prevSoundBiteSamples,soundBites[i].pSound->numSamples);
-				}
 				// add pcm
 				int offset = soundBites[i].location;
 				int j = offset;
 				int k = 0;
-				int limit = soundBites[i].pSound->numSamples;
-				if (prevSoundBiteSamples!=0){
-					limit = MIN(prevSoundBiteSamples,soundBites[i].pSound->numSamples);
-				}
-				printf("limit:%d\n",limit);
-				for (j = offset, k = 0; j < limit && k<size; j++,k++){
-					// if (buff[k]+clipNum(soundBites[i].pSound->pData[j])>SHRT_MAX){
-					// 	printf("overflow!\n");
-					// }
-					short shrt_data=clipNum(buff[k]+clipNum(soundBites[i].pSound->pData[j]));
-					buff[k] = shrt_data;
-					if (buff[k]>SHRT_MAX){
-						printf("still overflowing\n");
-					}
+				
+				for (k = 0; j < soundBites[i].pSound->numSamples && k<size; j++,k++){
+					int shrt_data=buff[k]+soundBites[i].pSound->pData[j];
+					buff[k] = clipNum(shrt_data);
 					offset++;
 				}
 				if (offset>=soundBites[i].pSound->numSamples){
@@ -314,7 +308,6 @@ static void fillPlaybackBuffer(short *buff, int size)
 					soundBites[i].pSound = NULL;
 					soundBites[i].location = 0;
 					numSoundBites--;
-					printf("remaining:%d\n",numSoundBites);
 				}
 				else {
 					soundBites[i].location = offset;
