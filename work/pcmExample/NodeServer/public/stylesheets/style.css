@@ -1,8 +1,6 @@
 
 #content {
-	width: 550px;
-	margin-left: auto;
-	margin-right: auto;
+	width: 800px;
 }
 
 #messages {
@@ -11,4 +9,21 @@
 	background-color: #eee;
 	margin-bottom: 1em;
 	margin-right: 10px;
+}
+
+#left-box {
+	border: solid;
+	padding: 10px;
+	width: 50%;
+}
+
+#status-box {
+	float: right;
+	border: solid;
+	width: 50vh;
+	padding: 10px;
+}
+
+#error-box {
+	display: none;
 }

@@ -3,7 +3,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 	<title>BeagleBone Beat-Box</title>
 	<meta charset="UTF-8">
-	<link rel="stylesheet" href="index_files/style.css">
+	<link rel="stylesheet" href="stylesheets/style.css">
 </head>
 
 <body>
@@ -23,11 +23,11 @@
 		<div id="left-box">
 			<div id="modediv">
 				<h2>Drum Beat Selection</h2>
-				<p>Current drum beat mode is: <strong><span id="modeid"></span></strong></p>
+				<p>Current drum beat mode is: <strong><span id="modeid" value="???"></span></strong></p>
 				<p>
 					<input type="button" id="modeNone" value="None">
-					<input type="button" id="modeRock1" value="Rock #1">
-					<input type="button" id="modeRock2" value="Describe Your Beat here">
+					<input type="button" id="modeRock" value="Rock #1">
+					<input type="button" id="modeCustom" value="Custom">
 				</p>
 				<h3>Volume</h3>
 				<p>
@@ -47,6 +47,9 @@
 			
 			<div id="control">
 				<p>
+					<input type="button" id="hihat" value="Hi Hat">
+					<input type="button" id="snare" value="Snare">
+					<input type="button" id="base" value="Base">
 					<input type="button" id="stop" value="Terminate Program">
 				</p>
 			</div>

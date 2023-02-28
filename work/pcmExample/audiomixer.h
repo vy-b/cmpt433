@@ -3,16 +3,23 @@
 #include <pthread.h>
 #ifndef AUDIO_MIXER_H
 #define AUDIO_MIXER_H
-
+#include "periodTimer.h"
 typedef struct {
 	int numSamples;
 	short *pData;
 } wavedata_t;
 
 #define AUDIOMIXER_MAX_VOLUME 100
+#define AUDIOMIXER_MAX_TEMPO 500
+// File used for play-back:
+#define BASE_DRUM "wave-files/100051__menegass__gui-drum-bd-hard.wav"
+#define HI_HAT "wave-files/100053__menegass__gui-drum-cc.wav"
+#define SNARE "wave-files/100059__menegass__gui-drum-snare-soft.wav"
 enum beatMode {NONE=1,ROCK=2,CUSTOM=3};
+extern int stopping;
 extern pthread_mutex_t audioMutex;
 extern int numSoundBites;
+extern Period_statistics_t* pStats;
 // init() must be called before any other functions,
 // cleanup() must be called last to stop playback threads and free memory.
 void AudioMixer_init(void);
@@ -35,10 +42,11 @@ int  AudioMixer_getVolume(void);
 void AudioMixer_setVolume(int newVolume);
 
 int AudioMixer_getTempo();
-int AudioMixer_setTempo(int tempo);
+void AudioMixer_setTempo(int tempo);
 
 int AudioMixer_getMode();
 int AudioMixer_setMode(enum beatMode newMode);
 int AudioMixer_cycleNextMode();
 
+void sleepForMs(long long delayInMs);
 #endif

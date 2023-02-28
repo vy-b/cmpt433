@@ -1,6 +1,8 @@
-// Incomplete implementation of an audio mixer. Search for "REVISIT" to find things
-// which are left as incomplete.
-// Note: Generates low latency audio on BeagleBone Black; higher latency found on host.
+/*
+ Complete Audio Mixer by Vy Bui
+ Starts a playback thread that receives sounds added to queue by other threads
+ Plays singular or combined sounds
+ */
 #include "audiomixer.h"
 #include <alsa/asoundlib.h>
 #include <stdbool.h>
@@ -10,7 +12,7 @@
 #include <signal.h>
 
 static snd_pcm_t *handle;
-#define DEFAULT_VOLUME 100
+#define DEFAULT_VOLUME 50
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define SAMPLE_RATE 44100
@@ -21,7 +23,7 @@ static snd_pcm_t *handle;
 
 static unsigned long playbackBufferSize = 0;
 static short *playbackBuffer = NULL;
-
+Period_statistics_t *pStats;
 // Currently active (waiting to be played) sound bites
 #define MAX_SOUND_BITES 30
 typedef struct {
@@ -38,16 +40,31 @@ static playbackSound_t soundBites[MAX_SOUND_BITES];
 int numSoundBites = 0;
 // Playback threading
 void* playbackThread(void* arg);
-static bool stopping = false;
 static pthread_t playbackThreadId;
+int stopping = 0;
 pthread_mutex_t audioMutex = PTHREAD_MUTEX_INITIALIZER;
 static int currentMode = 1;
 static int volume = 0;
 static int tempo = 70;
-// static void signal_handler()
-// {
-//     stopping = true;
-// }
+void sleepForMs(long long delayInMs)
+{
+    const long long NS_PER_MS = 1000 * 1000;
+    const long long NS_PER_SECOND = 1000000000;
+    long long delayNs = delayInMs * NS_PER_MS;
+    int seconds = delayNs / NS_PER_SECOND;
+    int nanoseconds = delayNs % NS_PER_SECOND;
+    struct timespec reqDelay = {seconds, nanoseconds};
+    nanosleep(&reqDelay, (struct timespec *)NULL);
+}
+static long long getTimeInMs(void)
+{
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    long long seconds = spec.tv_sec;
+    long long nanoSeconds = spec.tv_nsec;
+    long long milliSeconds = seconds * 1000 + nanoSeconds / 1000000;
+    return milliSeconds;
+}
 void AudioMixer_init(void)
 {
 	AudioMixer_setVolume(DEFAULT_VOLUME);
@@ -55,7 +72,7 @@ void AudioMixer_init(void)
 		soundBites[i].pSound = NULL;
 		soundBites[i].location = 0;
 	}
-
+	
 	// Initialize the currently active sound-bites being played
 	// REVISIT:- Implement this. Hint: set the pSound pointer to NULL for each
 	//     sound bite.
@@ -202,6 +219,7 @@ void AudioMixer_cleanup(void)
 	// Free playback buffer
 	// (note that any wave files read into wavedata_t records must be freed
 	//  in addition to this by calling AudioMixer_freeWaveFileData() on that struct.)
+	pthread_mutex_destroy(&audioMutex);
 	free(playbackBuffer);
 	playbackBuffer = NULL;
 
@@ -212,11 +230,15 @@ int AudioMixer_getTempo()
 {
 	return tempo;
 }
-int AudioMixer_setTempo(int newTempo)
+void AudioMixer_setTempo(int newTempo)
 {
+	if (newTempo < 0 || newTempo > AUDIOMIXER_MAX_TEMPO) {
+		printf("ERROR: Volume must be between 0 and 500.\n");
+		return;
+	}
 	tempo = newTempo;
 	printf("Tempo changed: %d\n",newTempo);
-	return tempo;
+	return;
 }
 int AudioMixer_getMode()
 {
@@ -322,70 +344,29 @@ static void fillPlaybackBuffer(short *buff, int size)
 		}
 		i++;
 	}
-	// printf("soundbites in queue %d\n",totalSoundBitesInQueue);
-	/*
-	 * REVISIT: Implement this
-	 * 1. Wipe the playbackBuffer to all 0's to clear any previous PCM data.
-	 *    Hint: use memset()
-	 * 2. Since this is called from a background thread, and soundBites[] array
-	 *    may be used by any other thread, must synchronize this.
-	 * 3. Loop through each slot in soundBites[], which are sounds that are either
-	 *    waiting to be played, or partially already played:
-	 *    - If the sound bite slot is unused, do nothing for this slot.
-	 *    - Otherwise "add" this sound bite's data to the play-back buffer
-	 *      (other sound bites needing to be played back will also add to the same data).
-	 *      * Record that this portion of the sound bite has been played back by incrementing
-	 *        the location inside the data where play-back currently is.
-	 *      * If you have now played back the entire sample, free the slot in the
-	 *        soundBites[] array.
-	 *
-	 * Notes on "adding" PCM samples:
-	 * - PCM is stored as signed shorts (between SHRT_MIN and SHRT_MAX).
-	 * - When adding values, ensure there is not an overflow. Any values which would
-	 *   greater than SHRT_MAX should be clipped to SHRT_MAX; likewise for underflow.
-	 * - Don't overflow any arrays!
-	 * - Efficiency matters here! The compiler may do quite a bit for you, but it doesn't
-	 *   hurt to keep it in mind. Here are some tips for efficiency and readability:
-	 *   * If, for each pass of the loop which "adds" you need to change a value inside
-	 *     a struct inside an array, it may be faster to first load the value into a local
-	 *      variable, increment this variable as needed throughout the loop, and then write it
-	 *     back into the struct inside the array after. For example:
-	 *           int offset = myArray[someIdx].value;
-	 *           for (int i =...; i < ...; i++) {
-	 *               offset ++;
-	 *           }
-	 *           myArray[someIdx].value = offset;
-	 *   * If you need a value in a number of places, try loading it into a local variable
-	 *          int someNum = myArray[someIdx].value;
-	 *          if (someNum < X || someNum > Y || someNum != Z) {
-	 *              someNum = 42;
-	 *          }
-	 *          ... use someNum vs myArray[someIdx].value;
-	 *
-	 */
-
 
 }
 
 
 void* playbackThread(void* arg)
 {
-
+	long long currentTime = getTimeInMs();
+	pStats = (Period_statistics_t *)malloc(sizeof(Period_statistics_t));
 	while (!stopping) {
 
 		// signal(SIGINT, signal_handler);
 		
-    pthread_mutex_lock(&audioMutex);
-	{
+		pthread_mutex_lock(&audioMutex);
+		{
+		Period_markEvent(PERIOD_EVENT_FILL_BUFFER);
 		// Generate next block of audio
-		// if (numSoundBites>0){
-			fillPlaybackBuffer(playbackBuffer, playbackBufferSize);
-		// }
-
-		// for (int i = 0; i < playbackBufferSize; i++){
-		// 	printf("%hi\n",playbackBuffer[i]);
-		// }
-		// if (playbackBuffer[0]==0) continue;
+		fillPlaybackBuffer(playbackBuffer, playbackBufferSize);
+		if (getTimeInMs() >= currentTime + 1000){
+			Period_getStatisticsAndClear(PERIOD_EVENT_FILL_BUFFER, pStats);
+			printf("M%d %dbpm vol:%d Audio[%5.3f, %5.3f] avg %5.3f/%d\n",AudioMixer_getMode(),AudioMixer_getTempo(),AudioMixer_getVolume(),pStats->minPeriodInMs, pStats->maxPeriodInMs, pStats->avgPeriodInMs, pStats->numSamples);
+			currentTime = getTimeInMs();
+		}
+		
 		// Output the audio
 		snd_pcm_sframes_t frames = snd_pcm_writei(handle,
 				playbackBuffer, playbackBufferSize);
@@ -404,10 +385,10 @@ void* playbackThread(void* arg)
 			printf("Short write (expected %li, wrote %li)\n",
 					playbackBufferSize, frames);
 		}
+		}
+		pthread_mutex_unlock(&audioMutex);
 	}
-	pthread_mutex_unlock(&audioMutex);
-	}
-
+	free(pStats);
 	return NULL;
 }
 
