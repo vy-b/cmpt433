@@ -61,7 +61,6 @@ void* udpListenThread()
 		// - recvfrom given max size - 1, so there is always room for the null
 		messageRx[bytesRx] = 0;
 		
-		printf("Message received: %s\n",messageRx);
 		handleRequest(messageRx, messageTx);
         
 	}

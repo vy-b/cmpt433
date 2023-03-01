@@ -233,11 +233,10 @@ int AudioMixer_getTempo()
 void AudioMixer_setTempo(int newTempo)
 {
 	if (newTempo < 0 || newTempo > AUDIOMIXER_MAX_TEMPO) {
-		printf("ERROR: Volume must be between 0 and 500.\n");
+		printf("ERROR: Tempo must be between 0 and 500.\n");
 		return;
 	}
 	tempo = newTempo;
-	printf("Tempo changed: %d\n",newTempo);
 	return;
 }
 int AudioMixer_getMode()
@@ -257,7 +256,6 @@ int AudioMixer_cycleNextMode()
 	else{
 		currentMode++;
 	}
-	printf("mode changed:%d\n",currentMode);
 
 	return currentMode;
 }
