@@ -355,7 +355,6 @@ void* playbackThread(void* arg)
 	while (!stopping) {
 
 		// signal(SIGINT, signal_handler);
-		
 		pthread_mutex_lock(&audioMutex);
 		{
 		Period_markEvent(PERIOD_EVENT_FILL_BUFFER);

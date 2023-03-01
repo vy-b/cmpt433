@@ -14,7 +14,9 @@ exports.listen = function(server) {
 	io.sockets.on('connection', function(socket) {
 		handleCommand(socket);
 	});
-	
+	io.sockets.on('disconnect', function(socket) {
+		handleCommand(socket);
+	});
 	
 };
 
@@ -36,12 +38,19 @@ function handleCommand(socket) {
 		client.on('listening', function () {
 			var address = client.address();
 		});
+		var timeout = setTimeout(function() {
+			console.log("Timeout!\n");
+			socket.emit('commandReply', 'Error: BeatBox program not running!\n');
+			client.close();
+		  }, 1000); // 5 second timeout
+	
 		// Handle an incoming message over the UDP from the local application.
-		client.on('message', function (message, remote) {
-
+		client.on('message', function (message) {
+			clearTimeout(timeout);
 			var reply = message.toString('utf8')
 			socket.emit('commandReply', reply);
-
+			
+			// Clear the timeout since we received a response
 			client.close();
 
 		});

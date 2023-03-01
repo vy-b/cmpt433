@@ -42,7 +42,7 @@ $(document).ready(function() {
 	});
 	setInterval(() => {
 		sendCommandViaUDP("getUpdates");
-	  }, 500);
+	  }, 1000);
 	socket.on('commandReply', function(result) {
 		console.log(result);
 		if (result.includes("volume")){
@@ -55,6 +55,7 @@ $(document).ready(function() {
 			$('#modeid').val(result.split(" ")[2]);
 		}
 		else if (result.includes("update")){
+			$("#error-box").css("display", "none");
 			var updates = result.split(" ");
 			var mode = "";
 			if (updates[3]==1) mode = "None";
@@ -67,16 +68,31 @@ $(document).ready(function() {
 			$('#modeid').text(mode);
 			$('#status').text("Device uptime = "+uptimeString);
 		}
+		else if (result.includes("Error")){
+			$('#error-text').text(result);
+			$("#error-box").css("display", "block");
+		}
 		// var newDiv = $('<code></code>')
 		// 	.text(result)
 		// 	.wrapInner("<div></div>");
 		// $('#messages').scrollTop($('#messages').prop('scrollHeight'));
 	});
+	// Add event listener for connect_error event
+	socket.on('connect_error', function() {
+		// Update UI to indicate that the server is not available
+		$('#error-text').text("server not available\n");
+		$("#error-box").css("display", "block");
+	});
 	
 });
 
 function sendCommandViaUDP(message) {
-	socket.emit('daUdpCommand', message);
+	socket.emit('daUdpCommand', message, function(ack) {
+		if (!ack) {
+			$('#error-text').text("server not available\n");
+			$("#error-box").css("display", "block");
+		}
+	  });
 };
 
 // code from stackoverflow, user R4nc1d https://stackoverflow.com/questions/37096367/how-to-convert-seconds-to-minutes-and-hours-in-javascript

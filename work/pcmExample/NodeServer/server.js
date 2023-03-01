@@ -5,7 +5,6 @@
 //   $ node server.js
 var PORT_NUMBER = 8042;
 
-
 var http = require('http');
 var fs   = require('fs');
 var path = require('path');
@@ -68,3 +67,6 @@ function sendFile(response, filePath, fileContents) {
 var udpServer = require('./lib/udp_server');
 udpServer.listen(server);
 
+server.on('close', function() {
+	udpServer.sockets.emit('commandReply', 'Error: The server has shut down.');
+});

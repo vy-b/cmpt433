@@ -57,12 +57,11 @@ void* udpListenThread()
 			messageRx, MSG_MAX_LEN - 1, 0,
 			(struct sockaddr *) &sinRemote, &sin_len);
 
-		// Check for errors (-1)
-
 		// Make it null terminated (so string functions work)
 		// - recvfrom given max size - 1, so there is always room for the null
 		messageRx[bytesRx] = 0;
 		
+		printf("Message received: %s\n",messageRx);
 		handleRequest(messageRx, messageTx);
         
 	}
