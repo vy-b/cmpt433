@@ -1,0 +1,1 @@
+cmd_/home/vy/cmpt433/work/driver_demo/testdriver.ko := arm-linux-gnueabihf-ld -r -EL -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/vy/cmpt433/work/driver_demo/testdriver.ko /home/vy/cmpt433/work/driver_demo/testdriver.o /home/vy/cmpt433/work/driver_demo/testdriver.mod.o;  true

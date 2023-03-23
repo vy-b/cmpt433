@@ -1,0 +1,1 @@
+cmd_/home/vy/cmpt433/work/morsecode/Module.symvers := sed 's/ko$$/o/' /home/vy/cmpt433/work/morsecode/modules.order | scripts/mod/modpost -m    -o /home/vy/cmpt433/work/morsecode/Module.symvers -e -i Module.symvers   -T -

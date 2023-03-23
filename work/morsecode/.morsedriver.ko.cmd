@@ -1,0 +1,1 @@
+cmd_/home/vy/cmpt433/work/morsecode/morsedriver.ko := arm-linux-gnueabihf-ld -r -EL -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/vy/cmpt433/work/morsecode/morsedriver.ko /home/vy/cmpt433/work/morsecode/morsedriver.o /home/vy/cmpt433/work/morsecode/morsedriver.mod.o;  true

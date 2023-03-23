@@ -1,0 +1,33 @@
+Format: 1.8
+Date: Mon, 20 Mar 2023 00:28:22 -0700
+Source: linux-5.10.140
+Binary: linux-headers-5.10.140 linux-image-5.10.140 linux-libc-dev
+Architecture: armhf
+Version: 1xross
+Distribution: bullseye
+Urgency: low
+Maintainer: vy <vy@433-debian>
+Changed-By: vy <vy@433-debian>
+Description:
+ linux-headers-5.10.140 - Linux kernel headers for 5.10.140 on armhf
+ linux-image-5.10.140 - Linux kernel, version 5.10.140
+ linux-libc-dev - Linux support headers for userspace development
+Changes:
+ linux-5.10.140 (1xross) bullseye; urgency=low
+ .
+   * Custom built Linux kernel.
+Checksums-Sha1:
+ ee4c14600132a9fc484443a548adcf6e8555003f 5265 linux-5.10.140_1xross_armhf.buildinfo
+ 046598414a3ccd158e4bb606c9993199dec99db5 7725332 linux-headers-5.10.140_1xross_armhf.deb
+ b3c1800d68a611b84d5ae7232397512a1e41d1c5 34232108 linux-image-5.10.140_1xross_armhf.deb
+ e1018f4cd227860ae5a322a4a8569c843a51974d 1112036 linux-libc-dev_1xross_armhf.deb
+Checksums-Sha256:
+ 15627b089b0c334bd3e8cec22f203f897affd4efe4c82b0d88ff3a7328ae396a 5265 linux-5.10.140_1xross_armhf.buildinfo
+ c1a479e82709b6a6a06671aebe68b148ce1980ea1e33468174d673bc7c7b55ba 7725332 linux-headers-5.10.140_1xross_armhf.deb
+ 9a46df97ea441ae2726e98ad944080d18da7bd82a30d73693ab17a908e398946 34232108 linux-image-5.10.140_1xross_armhf.deb
+ 335a726bd4c9af559a3b4cebe2499bec4eade2e009873992cb94a756daa25a2b 1112036 linux-libc-dev_1xross_armhf.deb
+Files:
+ 10913e27f68769c87c435eef51095b10 5265 kernel optional linux-5.10.140_1xross_armhf.buildinfo
+ 199f765b445d17b9df1383b9f2eccbe7 7725332 kernel optional linux-headers-5.10.140_1xross_armhf.deb
+ 6ae99abc91bdcf327c24afcc33bf187e 34232108 kernel optional linux-image-5.10.140_1xross_armhf.deb
+ 1d2c86b02b57084fd441eb95bb48d26e 1112036 devel optional linux-libc-dev_1xross_armhf.deb
