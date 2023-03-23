@@ -15,7 +15,7 @@ deploy:
 	@echo 'NOTE: On the host, in $(DEPLOY_PATH), it is best to run: npm install'
 	@echo '      Or, just run the node_install target in this makefile.'
 
-node_install:
+node_in	stall:
 	@echo ''
 	@echo ''
 	@echo 'INSTALLING REQUIRED NODE PACKAGES'

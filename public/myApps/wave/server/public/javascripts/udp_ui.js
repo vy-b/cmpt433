@@ -43,7 +43,7 @@ $(document).ready(function() {
 	setInterval(() => {
 		sendCommandViaUDP("getUpdates");
 	  }, 1000);
-	socket.timeout(2000).on('commandReply', function(result) {
+	socket.on('commandReply', function(result) {
 		console.log(result);
 		if (result.includes("volume")){
 			$('#volumeid').val(result.split(" ")[2]);
